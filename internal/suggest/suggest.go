@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/phenixrizen/gocode/internal/lookdot"
+	"github.com/mdempsky/gocode/internal/lookdot"
 )
 
 type Config struct {
