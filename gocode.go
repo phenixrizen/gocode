@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 )
@@ -14,8 +16,10 @@ var (
 	g_sock      = flag.String("sock", defaultSocketType, "socket type (unix | tcp | none)")
 	g_addr      = flag.String("addr", "127.0.0.1:37373", "address for tcp socket")
 	g_debug     = flag.Bool("debug", false, "enable server-side debug mode")
-	g_source    = flag.Bool("source", false, "use source importer")
+	g_source    = flag.Bool("source", true, "use source importer")
 	g_builtin   = flag.Bool("builtin", false, "propose builtin objects")
+	g_profile   = flag.Bool("profile", false, "profile gocode")
+	g_cachettl  = flag.Int("cachettl", 60, "minutes for cache to live")
 )
 
 func getSocketPath() string {
@@ -44,9 +48,14 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
+	if *g_profile {
+		http.ListenAndServe("localhost:6060", nil)
+	}
+
 	if *g_is_server {
 		doServer()
 	} else {
 		doClient()
 	}
+
 }

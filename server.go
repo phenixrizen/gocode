@@ -13,9 +13,11 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/mdempsky/gocode/internal/gbimporter"
-	"github.com/mdempsky/gocode/internal/suggest"
+	"github.com/phenixrizen/gocode/internal/gbimporter"
+	"github.com/phenixrizen/gocode/internal/suggest"
 )
+
+var cache = make(map[string]*types.Package)
 
 func doServer() {
 	addr := *g_addr
@@ -63,6 +65,7 @@ type AutoCompleteRequest struct {
 type AutoCompleteReply struct {
 	Candidates []suggest.Candidate
 	Len        int
+	Time       time.Time
 }
 
 func (s *Server) AutoComplete(req *AutoCompleteRequest, res *AutoCompleteReply) error {
@@ -95,7 +98,7 @@ func (s *Server) AutoComplete(req *AutoCompleteRequest, res *AutoCompleteReply) 
 		underlying = importer.Default().(types.ImporterFrom)
 	}
 	cfg := suggest.Config{
-		Importer: gbimporter.New(&req.Context, req.Filename, underlying),
+		Importer: gbimporter.New(&req.Context, req.Filename, underlying, cache, *g_cachettl),
 		Builtin:  req.Builtin,
 	}
 	if *g_debug {

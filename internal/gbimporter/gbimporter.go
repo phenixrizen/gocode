@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // We need to mangle go/build.Default to make gcimporter work as
@@ -20,12 +21,16 @@ type importer struct {
 	ctx        *PackedContext
 	gbroot     string
 	gbpaths    []string
+	cache      map[string]*types.Package
+	ttl        int
 }
 
-func New(ctx *PackedContext, filename string, underlying types.ImporterFrom) types.ImporterFrom {
+func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cache map[string]*types.Package, ttl int) types.ImporterFrom {
 	imp := &importer{
 		ctx:        ctx,
 		underlying: underlying,
+		cache:      cache,
+		ttl:        ttl,
 	}
 
 	slashed := filepath.ToSlash(filename)
@@ -63,6 +68,11 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 	buildDefaultLock.Lock()
 	defer buildDefaultLock.Unlock()
 
+	// return the package if it's in the cache
+	if i.cache[path] != nil {
+		return i.cache[path], nil
+	}
+
 	origDef := build.Default
 	defer func() { build.Default = origDef }()
 
@@ -81,7 +91,21 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 	def.SplitPathList = i.splitPathList
 	def.JoinPath = i.joinPath
 
-	return i.underlying.ImportFrom(path, srcDir, mode)
+	pkg, err := i.underlying.ImportFrom(path, srcDir, mode)
+	if err != nil {
+		return nil, err
+	}
+
+	// add the package to the cache
+	i.cache[path] = pkg
+	// delete the pakcage after ttl expires
+	timer := time.NewTimer(time.Duration(i.ttl) * time.Minute)
+	go func() {
+		<-timer.C
+		delete(i.cache, path)
+	}()
+
+	return pkg, nil
 }
 
 func (i *importer) splitPathList(list string) []string {
