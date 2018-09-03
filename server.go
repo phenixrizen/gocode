@@ -13,8 +13,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/phenixrizen/gocode/internal/gbimporter"
-	"github.com/phenixrizen/gocode/internal/suggest"
+	"github.com/mdempsky/gocode/internal/gbimporter"
+	"github.com/mdempsky/gocode/internal/suggest"
 )
 
 var cache = make(map[string]*types.Package)
