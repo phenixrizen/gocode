@@ -3,4 +3,10 @@ language: go
 go:
   - 1.9.x
   - 1.10.x
+  - 1.11.x
   - master
+
+matrix:
+  # It's ok if our code fails on unstable development versions of Go.
+  allow_failures:
+    - go: master
