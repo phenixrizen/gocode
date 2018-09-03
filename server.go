@@ -17,7 +17,7 @@ import (
 	"github.com/phenixrizen/gocode/internal/suggest"
 )
 
-var cache = make(map[string]*types.Package)
+var cache = make(map[string]*gbimporter.CachedPackage)
 
 func doServer() {
 	addr := *g_addr
@@ -65,7 +65,6 @@ type AutoCompleteRequest struct {
 type AutoCompleteReply struct {
 	Candidates []suggest.Candidate
 	Len        int
-	Time       time.Time
 }
 
 func (s *Server) AutoComplete(req *AutoCompleteRequest, res *AutoCompleteReply) error {
@@ -117,6 +116,32 @@ func (s *Server) AutoComplete(req *AutoCompleteRequest, res *AutoCompleteReply) 
 		log.Println("=======================================================")
 	}
 	res.Candidates, res.Len = candidates, d
+	return nil
+}
+
+type ClearCacheRquest struct {
+	Pkgs []string
+}
+
+type ClearCacheReply struct{}
+
+func (s *Server) ClearCache(req *ClearCacheRquest, res *ClearCacheReply) error {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("panic: %s\n\n", err)
+			debug.PrintStack()
+		}
+	}()
+	// pkg list is nil clear the whole cache
+	if req.Pkgs == nil {
+		cache = make(map[string]*gbimporter.CachedPackage)
+	} else { // otherwise clear the requested packages
+		for _, pkg := range req.Pkgs {
+			if _, ok := cache[pkg]; ok {
+				delete(cache, pkg)
+			}
+		}
+	}
 	return nil
 }
 

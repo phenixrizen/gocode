@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"runtime/debug"
@@ -35,7 +36,7 @@ func doClient() {
 	if flag.NArg() > 0 {
 		command = flag.Arg(0)
 		switch command {
-		case "autocomplete", "exit":
+		case "autocomplete", "exit", "clearcache":
 			// these are valid commands
 		case "close":
 			// "close" is an alias for "exit"
@@ -79,6 +80,8 @@ func doClient() {
 	switch command {
 	case "autocomplete":
 		cmdAutoComplete(client)
+	case "clearcache":
+		cmdClearCache(client)
 	case "exit":
 		cmdExit(client)
 	}
@@ -147,6 +150,21 @@ func cmdAutoComplete(c *rpc.Client) {
 		fmt = suggest.NiceFormat
 	}
 	fmt(os.Stdout, res.Candidates, res.Len)
+}
+
+func cmdClearCache(c *rpc.Client) {
+	if c == nil {
+		return
+	}
+	var req ClearCacheRquest
+	if flag.Arg(1) != "" {
+		pkgs := strings.Split(flag.Arg(1), ",")
+		req.Pkgs = pkgs
+	}
+	var res ClearCacheReply
+	if err := c.Call("Server.ClearCache", &req, &res); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func cmdExit(c *rpc.Client) {

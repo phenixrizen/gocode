@@ -21,11 +21,16 @@ type importer struct {
 	ctx        *PackedContext
 	gbroot     string
 	gbpaths    []string
-	cache      map[string]*types.Package
+	cache      map[string]*CachedPackage
 	ttl        int
 }
 
-func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cache map[string]*types.Package, ttl int) types.ImporterFrom {
+type CachedPackage struct {
+	pkg *types.Package
+	ttl int64
+}
+
+func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cache map[string]*CachedPackage, ttl int) types.ImporterFrom {
 	imp := &importer{
 		ctx:        ctx,
 		underlying: underlying,
@@ -68,9 +73,15 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 	buildDefaultLock.Lock()
 	defer buildDefaultLock.Unlock()
 
-	// return the package if it's in the cache
-	if i.cache[path] != nil {
-		return i.cache[path], nil
+	// return the package if it's in the cache and still within the ttl
+	if i.ttl > 0 {
+		if c, ok := i.cache[path]; ok {
+			if c.ttl < time.Now().Unix() {
+				delete(i.cache, path)
+			} else {
+				return c.pkg, nil
+			}
+		}
 	}
 
 	origDef := build.Default
@@ -97,13 +108,13 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 	}
 
 	// add the package to the cache
-	i.cache[path] = pkg
-	// delete the pakcage after ttl expires
-	timer := time.NewTimer(time.Duration(i.ttl) * time.Minute)
-	go func() {
-		<-timer.C
-		delete(i.cache, path)
-	}()
+	if i.ttl > 0 {
+		cpkg := &CachedPackage{
+			pkg: pkg,
+			ttl: time.Now().Add(time.Duration(i.ttl) * time.Minute).Unix(),
+		}
+		i.cache[path] = cpkg
+	}
 
 	return pkg, nil
 }

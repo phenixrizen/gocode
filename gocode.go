@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -19,7 +20,7 @@ var (
 	g_source    = flag.Bool("source", true, "use source importer")
 	g_builtin   = flag.Bool("builtin", false, "propose builtin objects")
 	g_profile   = flag.Bool("profile", false, "profile gocode")
-	g_cachettl  = flag.Int("cachettl", 60, "minutes for cache to live")
+	g_cachettl  = flag.Int("cachettl", 60, "minutes for cached packages to live, 0 to disable the cache")
 )
 
 func getSocketPath() string {
@@ -41,12 +42,17 @@ func usage() {
 	fmt.Fprintf(os.Stderr,
 		"\nCommands:\n"+
 			"  autocomplete [<path>] <offset>     main autocompletion command\n"+
+			"  clearcache [<pkg name>,...]        clearcache command\n"+
 			"  exit                               terminate the gocode daemon\n")
 }
 
 func main() {
 	flag.Usage = usage
 	flag.Parse()
+
+	if *g_cachettl < 0 {
+		log.Fatal("Error: chachettl must be a positive integer")
+	}
 
 	if *g_profile {
 		http.ListenAndServe("localhost:6060", nil)
