@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mdempsky/gocode/internal/suggest"
+	"github.com/phenixrizen/gocode/internal/suggest"
 )
 
 func TestRegress(t *testing.T) {
