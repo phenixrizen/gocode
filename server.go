@@ -18,6 +18,7 @@ import (
 )
 
 var cache = make(map[string]*gbimporter.CachedPackage)
+var ticker = time.NewTicker(time.Duration(*g_cachettl/6) * time.Minute)
 
 func doServer() {
 	addr := *g_addr
@@ -97,7 +98,7 @@ func (s *Server) AutoComplete(req *AutoCompleteRequest, res *AutoCompleteReply) 
 		underlying = importer.Default().(types.ImporterFrom)
 	}
 	cfg := suggest.Config{
-		Importer: gbimporter.New(&req.Context, req.Filename, underlying, cache, *g_cachettl),
+		Importer: gbimporter.New(&req.Context, req.Filename, underlying, cache, *g_cachettl, ticker),
 		Builtin:  req.Builtin,
 	}
 	if *g_debug {

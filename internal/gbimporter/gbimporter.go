@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/build"
 	"go/types"
+	"log"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -30,13 +31,29 @@ type CachedPackage struct {
 	ttl int64
 }
 
-func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cache map[string]*CachedPackage, ttl int) types.ImporterFrom {
+func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cache map[string]*CachedPackage, ttl int, ticker *time.Ticker) types.ImporterFrom {
 	imp := &importer{
 		ctx:        ctx,
 		underlying: underlying,
 		cache:      cache,
 		ttl:        ttl,
 	}
+
+	// goroutine to clear cache itmes if no request are made to the daemon for extended periods
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				for path, cp := range cache {
+					log.Printf("\n\n%d <\n%d", cp.ttl, time.Now().Unix())
+					if cp.ttl < time.Now().Unix() {
+						log.Printf("Deleting package: %s\n", path)
+						delete(cache, path)
+					}
+				}
+			}
+		}
+	}()
 
 	slashed := filepath.ToSlash(filename)
 	i := strings.LastIndex(slashed, "/vendor/src/")
@@ -75,11 +92,11 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 
 	// return the package if it's in the cache and still within the ttl
 	if i.ttl > 0 {
-		if c, ok := i.cache[path]; ok {
-			if c.ttl < time.Now().Unix() {
+		if cp, ok := i.cache[path]; ok {
+			if cp.ttl < time.Now().Unix() {
 				delete(i.cache, path)
 			} else {
-				return c.pkg, nil
+				return cp.pkg, nil
 			}
 		}
 	}
