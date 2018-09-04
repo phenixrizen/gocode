@@ -27,7 +27,7 @@ type importer struct {
 
 type CachedPackage struct {
 	pkg *types.Package
-	ttl int64
+	Ttl int64
 }
 
 func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cache map[string]*CachedPackage, ttl int) types.ImporterFrom {
@@ -75,11 +75,11 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 
 	// return the package if it's in the cache and still within the ttl
 	if i.ttl > 0 {
-		if c, ok := i.cache[path]; ok {
-			if c.ttl < time.Now().Unix() {
+		if cp, ok := i.cache[path]; ok {
+			if cp.Ttl < time.Now().Unix() {
 				delete(i.cache, path)
 			} else {
-				return c.pkg, nil
+				return cp.pkg, nil
 			}
 		}
 	}
@@ -111,7 +111,7 @@ func (i *importer) ImportFrom(path, srcDir string, mode types.ImportMode) (*type
 	if i.ttl > 0 {
 		cpkg := &CachedPackage{
 			pkg: pkg,
-			ttl: time.Now().Add(time.Duration(i.ttl) * time.Minute).Unix(),
+			Ttl: time.Now().Add(time.Duration(i.ttl) * time.Minute).Unix(),
 		}
 		i.cache[path] = cpkg
 	}

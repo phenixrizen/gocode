@@ -21,6 +21,7 @@ var (
 	g_builtin   = flag.Bool("builtin", false, "propose builtin objects")
 	g_profile   = flag.Bool("profile", false, "profile gocode")
 	g_cachettl  = flag.Int("cachettl", 60, "minutes for cached packages to live, 0 to disable the cache")
+	g_cachecron = flag.Int("cachecron", 10, "minutes between each cron pass to expire cached packages")
 )
 
 func getSocketPath() string {
