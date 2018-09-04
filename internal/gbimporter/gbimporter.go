@@ -40,20 +40,24 @@ func New(ctx *PackedContext, filename string, underlying types.ImporterFrom, cac
 	}
 
 	// goroutine to clear cache itmes if no request are made to the daemon for extended periods
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				for path, cp := range cache {
-					log.Printf("\n\n%d <\n%d", cp.ttl, time.Now().Unix())
-					if cp.ttl < time.Now().Unix() {
-						log.Printf("Deleting package: %s\n", path)
-						delete(cache, path)
+	if ttl > 0 {
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					for path, cp := range cache {
+						log.Printf("\n\n%d <\n%d", cp.ttl, time.Now().Unix())
+						if cp.ttl < time.Now().Unix() {
+							log.Printf("Deleting package: %s\n", path)
+							delete(cache, path)
+						}
 					}
 				}
 			}
-		}
-	}()
+		}()
+	} else {
+		ticker.Stop()
+	}
 
 	slashed := filepath.ToSlash(filename)
 	i := strings.LastIndex(slashed, "/vendor/src/")

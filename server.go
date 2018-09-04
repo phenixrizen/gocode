@@ -18,7 +18,7 @@ import (
 )
 
 var cache = make(map[string]*gbimporter.CachedPackage)
-var ticker = time.NewTicker(time.Duration(*g_cachettl/6) * time.Minute)
+var ticker = time.NewTicker(time.Duration(*g_cachecron) * time.Minute)
 
 func doServer() {
 	addr := *g_addr
