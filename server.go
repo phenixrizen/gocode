@@ -18,9 +18,30 @@ import (
 )
 
 var cache = make(map[string]*gbimporter.CachedPackage)
-var ticker = time.NewTicker(time.Duration(*g_cachecron) * time.Minute)
 
 func doServer() {
+	ticker := time.NewTicker(time.Duration(*g_cachecron) * time.Minute)
+	// goroutine to clear cache itmes if no request are made to the daemon for extended periods
+	if *g_cachettl > 0 {
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					for path, cp := range cache {
+						if cp.Ttl < time.Now().Unix() {
+							if *g_debug {
+								log.Printf("Deleting package from cache: %s\n", path)
+							}
+							delete(cache, path)
+						}
+					}
+				}
+			}
+		}()
+	} else {
+		ticker.Stop()
+	}
+
 	addr := *g_addr
 	if *g_sock == "unix" {
 		addr = getSocketPath()
@@ -98,7 +119,7 @@ func (s *Server) AutoComplete(req *AutoCompleteRequest, res *AutoCompleteReply) 
 		underlying = importer.Default().(types.ImporterFrom)
 	}
 	cfg := suggest.Config{
-		Importer: gbimporter.New(&req.Context, req.Filename, underlying, cache, *g_cachettl, ticker),
+		Importer: gbimporter.New(&req.Context, req.Filename, underlying, cache, *g_cachettl),
 		Builtin:  req.Builtin,
 	}
 	if *g_debug {
